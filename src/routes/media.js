@@ -1,18 +1,14 @@
-// routes/media.js
 const express = require('express');
-const { spawn } = require('child_process');
 const path = require("path");
 const fs = require('fs');
 const ytSearch = require('yt-search');
-const hydralerne = require('@hydralerne/youtube-api');
-const youtubedl = require("youtube-dl-exec");
+const youtubedl = require("yt-dlp-exec"); // ✅ nuevo paquete
 
 const router = express.Router();
-const axios = require('axios');
 
 router.post('/search', async (req, res) => {
   const query = req.body.query;
-  const limit = parseInt(req.body.limit) || 5; // Valor por defecto: 5
+  const limit = parseInt(req.body.limit) || 5;
 
   try {
     const searchResults = await ytSearch(query);
@@ -27,7 +23,6 @@ router.post('/search', async (req, res) => {
       miniatura: video.thumbnail,
       id: video.videoId,
     }));
-    console.log(videos)
 
     res.json(detalles);
   } catch (error) {
@@ -35,6 +30,7 @@ router.post('/search', async (req, res) => {
     res.status(500).json({ error: 'No se pudo buscar videos' });
   }
 });
+
 router.post("/stream", async (req, res) => {
   const videoId = req.body.videoId;
   const cookiesFile = path.join(__dirname, "..", "downloads/cookies.txt");
@@ -55,7 +51,6 @@ router.post("/stream", async (req, res) => {
       cookies: cookiesFile,
     });
 
-    // Filtrar formatos con video y audio
     const candidates = info.formats.filter(f =>
       f.url && f.vcodec !== "none" && f.acodec !== "none"
     );
@@ -64,7 +59,6 @@ router.post("/stream", async (req, res) => {
       return res.status(404).json({ error: "No se encontró stream reproducible" });
     }
 
-    // Ordenar por resolución y fps
     candidates.sort((a, b) => {
       if ((b.height || 0) !== (a.height || 0)) {
         return (b.height || 0) - (a.height || 0);
@@ -72,9 +66,7 @@ router.post("/stream", async (req, res) => {
       return (b.fps || 0) - (a.fps || 0);
     });
 
-    // Elegir el mejor
     const chosen = candidates[0];
-    console.log(chosen.url)
 
     res.json({
       title: info.title,
@@ -85,10 +77,9 @@ router.post("/stream", async (req, res) => {
       fps: chosen.fps,
     });
   } catch (err) {
-    console.error(response?.data?.error);
-    res.status(200).json({ error: err.message || err });
+    console.error("Error al obtener stream:", err);
+    res.status(500).json({ error: err.message || err });
   }
 });
-
 
 module.exports = router;
